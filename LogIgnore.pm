@@ -1,6 +1,6 @@
 package Apache::LogIgnore;
 
-$Apache::LogIgnore::VERSION = 0.02;
+$Apache::LogIgnore::VERSION = 0.03;
 
 use 5.006;
 use strict;
@@ -9,30 +9,62 @@ use Apache::Constants qw(:common);
 sub handler {
     my $r = shift;
     my $debugflag = $r->dir_config("DebugFlag");
+    my ($marker, $host, $referer, $agent, $from, $status, $type, $minsize, $maxsize);
+    #Remote Host
     my $ignorehost = $r->dir_config("IgnoreHost");
-    return DONE if $r->get_remote_host eq $ignorehost;
+    ($marker,$host) = $ignorehost =~ /^(\!)?(.*)$/;
+    return DONE if $r->get_remote_host eq $host && !$marker;
+    return DONE if $r->get_remote_host ne $host && $marker;
     warn "Checked Remote Host" if $debugflag;
+
+    #User Agent
     my $ignoreagent = $r->dir_config("IgnoreAgent");
-    return DONE if $r->header_in("User-Agent") =~ /$ignoreagent/i && $r->header_in("User-Agent") && $r->dir_config("IgnoreAgent");
+    ($marker,$agent) = $ignoreagent =~ /^(\!)?(.*)$/;
+    return DONE if $r->header_in("User-Agent") =~ /$agent/i && $r->header_in("User-Agent") && $r->dir_config("IgnoreAgent") && !$marker;
+    return DONE if $r->header_in("User-Agent") !~ /$agent/i && $r->header_in("User-Agent") && $r->dir_config("IgnoreAgent") && $marker;
     warn "Checked User Agent" if $debugflag;
+
+    #Referer
     my $ignorereferer = $r->dir_config("IgnoreReferer");
-    return DONE if $r->header_in("Referer") =~ /$ignorereferer/i && $r->header_in("Referer") && $r->dir_config("IgnoreReferer");
+    ($marker,$referer) = $ignorereferer =~ /^(\!)?(.*)$/;
+    return DONE if $r->header_in("Referer") =~ /$referer/i && $r->header_in("Referer") && $r->dir_config("IgnoreReferer") && !$marker;
+    return DONE if $r->header_in("Referer") !~ /$referer/i && $r->header_in("Referer") && $r->dir_config("IgnoreReferer") && $marker;
     warn "Checked Referer" if $debugflag;
+
+    #From
     my $ignorefrom = $r->dir_config("IgnoreFrom");
-    return DONE if $r->header_in("From") =~ /$ignorefrom/i && $r->header_in("From") && $r->dir_config("IgnoreFrom");
+    ($marker,$from) = $ignorefrom =~ /^(\!)?(.*)$/;
+    return DONE if $r->header_in("From") =~ /$from/i && $r->header_in("From") && $r->dir_config("IgnoreFrom") && !$marker;
+    return DONE if $r->header_in("From") !~ /$from/i && $r->header_in("From") && $r->dir_config("IgnoreFrom") && $marker;
     warn "Checked From" if $debugflag;
+   
+    #Minimum Size
     my $filesize = -s $r->filename;
     my $ignoreminsize = $r->dir_config("IgnoreMinSize");
-    return DONE if $filesize <= $ignoreminsize && $filesize && $r->dir_config("IgnoreMinSize");
+    ($marker,$minsize) = $ignoreminsize =~ /^(\!)?(.*)$/;
+    return DONE if $filesize <= $minsize && $filesize && $r->dir_config("IgnoreMinSize") && !$marker;
+    return DONE if $filesize > $minsize && $filesize && $r->dir_config("IgnoreMinSize") && $marker;
     warn "Checked Minimum Size" if $debugflag;
+
+    #Maximum Size
     my $ignoremaxsize = $r->dir_config("IgnoreMaxSize");
-    return DONE if $filesize >= $ignoremaxsize && $filesize && $r->dir_config("IgnoreMaxSize");
+    ($marker,$maxsize) = $ignoremaxsize =~ /^(\!)?(.*)$/;
+    return DONE if $filesize >= $maxsize && $filesize && $r->dir_config("IgnoreMaxSize") && !$marker;
+    return DONE if $filesize < $maxsize && $filesize && $r->dir_config("IgnoreMaxSize") && $marker;
     warn "Checked Maximum Size" if $debugflag;
+
+    #Type
     my $ignoretype = $r->dir_config("IgnoreType");
-    return DONE if $r->content_type =~ /$ignoretype/i && $r->content_type && $r->dir_config("IgnoreType");
+    ($marker,$type) = $ignoretype =~ /^(\!)?(.*)$/;
+    return DONE if $r->content_type =~ /$type/i && $r->content_type && $r->dir_config("IgnoreType") && !$marker;
+    return DONE if $r->content_type !~ /$type/i && $r->content_type && $r->dir_config("IgnoreType") && $marker;
     warn "Checked Content Type" if $debugflag;
+
+    #Status    
     my $ignorestatus = $r->dir_config("IgnoreStatus");
-    return DONE if $r->status eq $ignorestatus && $r->status && $r->dir_config("IgnoreStatus");
+    ($marker,$status) = $ignorestatus =~ /^(\!)?(.*)$/;
+    return DONE if $r->status eq $status && $r->status && $r->dir_config("IgnoreStatus") && !$marker;
+    return DONE if $r->status ne $status && $r->status && $r->dir_config("IgnoreStatus") && $marker;
     warn "Checked Status" if $debugflag;
     return OK;
 }
@@ -193,10 +225,27 @@ Set this to true to get debug information in your error log.
 
 =back
 
+=over 3
+
+=item Negating
+
+You can negate all of the above values with a ! (except DebugFlag).
+
+Example would be :
+
+IgnoreStatus !200
+
+Don't log any request beside the ones resulting in a 200 status.
+
+=back
 
 =head1 EXPORT
 
 None by default.
+
+=head1 VERSION
+
+This is Apache::LogIgnore 0.03.
 
 =head1 AUTHOR
 

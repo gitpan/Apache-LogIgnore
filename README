@@ -1,4 +1,4 @@
-README for Apache::LogFiler 0.02
+README for Apache::LogFiler 0.03
 
 WHATIS
 
@@ -35,7 +35,15 @@ PerlSetVar     IgnoreStatus 403
 
 Any of those PerlSetVar statements can be left out.
 /path is the directory you wish to apply Apache::LogIgnore on.
-    
+
+Negating
+You can negate all of the above values with a ! (except DebugFlag).
+Example would be :
+
+IgnoreStatus !200
+
+Don't log any request beside the ones resulting in a 200 status.
+
 TESTING
 
 This module has been tested on Linux 2.4.x (x86) with Perl 5.6.1
